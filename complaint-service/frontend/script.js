@@ -10,7 +10,9 @@ document.getElementById("complaintForm")
 
         const response = await fetch(API_URL + "/complaints", {
             method: "POST",
-            headers: {"Content-Type": "application/json"},
+            headers: {
+                "Content-Type": "application/json"
+            },
             body: JSON.stringify({
                 citizen_id: citizenId,
                 description: description,
@@ -20,14 +22,24 @@ document.getElementById("complaintForm")
 
         const data = await response.json();
 
-        document.getElementById("result").innerHTML =
-            `<h3>Complaint Registered</h3>
-             Complaint ID: ${data.complaint_id}<br>
-             Status: ${data.status}`;
+        if (response.ok) {
+            document.getElementById("result").innerHTML =
+                `<h3>Complaint Registered</h3>
+                 Complaint ID: ${data.complaint_id}<br>
+                 Citizen ID: ${data.citizen_id}<br>
+                 Citizen Name: ${data.citizen_name}<br>
+                 Status: ${data.status}`;
+        } else {
+            document.getElementById("result").innerHTML =
+                `<h3>Error</h3>
+                 ${data.error}`;
+        }
     });
+
 
 async function findComplaint() {
     const id = document.getElementById("searchComplaintId").value;
+
     const response = await fetch(API_URL + "/complaints/" + id);
     const data = await response.json();
 
@@ -40,6 +52,7 @@ async function findComplaint() {
              Location: ${data.location}<br>
              Status: ${data.status}`;
     } else {
-        document.getElementById("complaintDetails").innerHTML = data.error;
+        document.getElementById("complaintDetails").innerHTML =
+            data.error;
     }
 }
