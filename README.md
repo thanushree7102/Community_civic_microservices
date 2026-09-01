@@ -165,7 +165,7 @@ Example response:
 {
     "citizen_id": 1,
     "name": "Shikha",
-    "phone": "9008836868",
+    "phone": "1234567890",
     "ward": "12"
 }
 ```
