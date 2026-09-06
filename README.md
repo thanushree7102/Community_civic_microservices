@@ -19,26 +19,6 @@ The system consists of:
 
 The Citizen Service and Complaint Service are implemented as independent microservices. The Complaint Service communicates with the Citizen Service through a REST API to verify whether a citizen exists before registering a complaint. The Scheme & Feedback Service communicates with both the Citizen Service and the Complaint Service. The API Gateway acts as a single entry point that routes requests to the correct service.
 
----
-
-## Current Project Status
-
-| Component                             | Status    |
-| -------------------------------------- | --------- |
-| Citizen Service                        | Completed |
-| Citizen Database                       | Completed |
-| Citizen Frontend                       | Completed |
-| Complaint Service                      | Completed |
-| Complaint Database                     | Completed |
-| Complaint Frontend                     | Completed |
-| Citizen-Complaint REST Communication   | Completed |
-| Scheme & Feedback Service              | Completed |
-| Scheme & Feedback Database             | Completed |
-| Scheme & Feedback Frontend             | Completed |
-| Scheme-Citizen REST Communication      | Completed |
-| Scheme-Complaint REST Communication    | Completed |
-| API Gateway                            | Completed |
-| Integration Testing                    | Completed |
 
 ---
 
