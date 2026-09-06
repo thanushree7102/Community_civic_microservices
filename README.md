@@ -1,4 +1,3 @@
-
 # Community Civic Microservices
 
 A microservices-based Community Civic Portal designed to manage citizens and civic complaints through independent services communicating using REST APIs.
@@ -9,98 +8,108 @@ This project is developed as a group project. Each microservice has its own back
 
 ## Project Overview
 
-The Community Civic Portal provides a simple platform for managing citizen information and registering civic complaints.
+The Community Civic Portal provides a simple platform for managing citizen information, registering civic complaints, collecting complaint feedback, and calculating Karnataka government scheme benefits.
 
-The system currently consists of:
+The system consists of:
 
 1. **Citizen Service**
 2. **Complaint Service**
-3. **Third Microservice - To Be Decided**
+3. **Scheme & Feedback Service**
+4. **API Gateway**
 
-The Citizen Service and Complaint Service are implemented as independent microservices. The Complaint Service communicates with the Citizen Service through a REST API to verify whether a citizen exists before registering a complaint.
+The Citizen Service and Complaint Service are implemented as independent microservices. The Complaint Service communicates with the Citizen Service through a REST API to verify whether a citizen exists before registering a complaint. The Scheme & Feedback Service communicates with both the Citizen Service and the Complaint Service. The API Gateway acts as a single entry point that routes requests to the correct service.
 
 ---
 
 ## Current Project Status
 
-| Component | Status |
-|---|---|
-| Citizen Service | Completed |
-| Citizen Database | Completed |
-| Citizen Frontend | Completed |
-| Complaint Service | Completed |
-| Complaint Database | Completed |
-| Complaint Frontend | Completed |
-| Citizen-Complaint REST Communication | Completed |
-| Integration Testing | Completed |
-| Third Microservice | Pending discussion with instructor |
+| Component                             | Status    |
+| -------------------------------------- | --------- |
+| Citizen Service                        | Completed |
+| Citizen Database                       | Completed |
+| Citizen Frontend                       | Completed |
+| Complaint Service                      | Completed |
+| Complaint Database                     | Completed |
+| Complaint Frontend                     | Completed |
+| Citizen-Complaint REST Communication   | Completed |
+| Scheme & Feedback Service              | Completed |
+| Scheme & Feedback Database             | Completed |
+| Scheme & Feedback Frontend             | Completed |
+| Scheme-Citizen REST Communication      | Completed |
+| Scheme-Complaint REST Communication    | Completed |
+| API Gateway                            | Completed |
+| Integration Testing                    | Completed |
 
 ---
 
 ## System Architecture
 
-```text
-                    Community Civic Portal
-                             |
-             +---------------+---------------+
-             |                               |
-             v                               v
-      Citizen Service                 Complaint Service
-          Port 5001                       Port 5002
-             |                               |
-             v                               |
-        citizen.db                           |
-                                             |
-                         REST API             |
-                    GET /citizens/<id>       |
-                         <--------------------+
-                                             |
-                                             v
-                                      complaint.db
-````
-
-The Complaint Service does not directly access the Citizen Service database.
-
-Instead, it sends a REST request to the Citizen Service:
-
-```text
-GET /citizens/<citizen_id>
+```
+                        Community Civic Portal
+                                |
+                        API Gateway (Port 5000)
+                                |
+        +---------------+---------------+---------------------+
+        |               |               |                     |
+        v               v               v                     |
+Citizen Service   Complaint Service   Scheme & Feedback Service
+  Port 5001            Port 5002              Port 5003
+        |               |                     |         |
+        v               |                     v         v
+   citizen.db           |            scheme_feedback.db |
+                         |                               |
+                    REST API                        REST API
+              GET /citizens/<id>            GET /citizens/<id>
+                    <---------------------------------+
+                                                        |
+                         REST API                       |
+                   GET /complaints/<id>                 |
+                         <-------------------------------+
+                         v
+                   complaint.db
 ```
 
-The Citizen Service checks its own database and returns the citizen details.
+No service accesses another service's database directly. All cross-service communication happens through REST APIs.
 
 ---
 
-# Project Structure
+## Project Structure
 
-```text
+```
 Community_civic_microservices/
 │
 ├── citizen-service/
-│   │
 │   ├── backend/
 │   │   └── app.py
-│   │
 │   ├── database/
 │   │   └── citizen.db
-│   │
 │   └── frontend/
 │       ├── index.html
 │       ├── style.css
 │       └── script.js
 │
 ├── complaint-service/
-│   │
 │   ├── backend/
 │   │   └── app.py
-│   │
 │   ├── database/
 │   │   └── complaint.db
-│   │
 │   └── frontend/
 │       ├── index.html
 │       ├── style.css
 │       └── script.js
+│
+├── scheme-feedback-service/
+│   ├── backend/
+│   │   └── app.py
+│   ├── database/
+│   │   └── scheme_feedback.db
+│   └── frontend/
+│       ├── index.html
+│       ├── style.css
+│       └── script.js
+│
+├── api-gateway/
+│   └── app.py
 │
 └── README.md
 ```
@@ -110,69 +119,60 @@ Community_civic_microservices/
 # 1. Citizen Service
 
 ## Description
-
-The Citizen Service is responsible for storing and retrieving citizen information.
-
-It is an independent Flask microservice and maintains its own SQLite database.
+The Citizen Service is responsible for storing and retrieving citizen information. It is an independent Flask microservice and maintains its own SQLite database.
 
 ### Port
-
-```text
+```
 5001
 ```
 
 ### Base URL
-
-```text
+```
 http://127.0.0.1:5001
 ```
 
 ### Database
-
-```text
+```
 citizen-service/database/citizen.db
 ```
-
----
 
 ## Citizen API Endpoints
 
 ### Create Citizen
-
-```text
+```
 POST /citizens
 ```
-
 Creates a new citizen.
 
-### Get Citizen
-
-```text
-GET /citizens/<citizen_id>
-```
-
-Retrieves the details of a citizen using the citizen ID.
-
-Example:
-
-```text
-GET /citizens/1
-```
-
-Example response:
-
+Example request:
 ```json
 {
-    "citizen_id": 1,
-    "name": "Shikha",
-    "phone": "1234567890",
-    "ward": "12"
+    "name": "Ravi",
+    "ward": "12",
+    "phone": "9998887770",
+    "gender": "male"
 }
 ```
 
-If the citizen does not exist:
+Example response:
+```json
+{
+    "citizen_id": 3,
+    "name": "Ravi",
+    "ward": "12",
+    "phone": "9998887770",
+    "gender": "male"
+}
+```
 
-```text
+### Get Citizen
+```
+GET /citizens/<citizen_id>
+```
+Retrieves the details of a citizen using the citizen ID.
+
+If the citizen does not exist:
+```
 404 Not Found
 ```
 
@@ -181,43 +181,31 @@ If the citizen does not exist:
 # 2. Complaint Service
 
 ## Description
-
-The Complaint Service is responsible for registering and tracking civic complaints.
-
-It is implemented as an independent Flask microservice and maintains its own SQLite database.
+The Complaint Service is responsible for registering and tracking civic complaints. It verifies the citizen through the Citizen Service before creating a complaint.
 
 ### Port
-
-```text
+```
 5002
 ```
 
 ### Base URL
-
-```text
+```
 http://127.0.0.1:5002
 ```
 
 ### Database
-
-```text
+```
 complaint-service/database/complaint.db
 ```
-
----
 
 ## Complaint API Endpoints
 
 ### Create Complaint
-
-```text
+```
 POST /complaints
 ```
 
-Creates a new civic complaint after verifying the citizen through the Citizen Service.
-
 Example request:
-
 ```json
 {
     "citizen_id": 1,
@@ -227,7 +215,6 @@ Example request:
 ```
 
 Example successful response:
-
 ```json
 {
     "complaint_id": 1,
@@ -239,501 +226,302 @@ Example successful response:
 }
 ```
 
-Response status:
-
-```text
-201 Created
-```
-
----
-
 ### Get Complaint
-
-```text
+```
 GET /complaints/<complaint_id>
 ```
 
-Retrieves the details of an existing complaint.
+If the complaint does not exist:
+```
+404 Not Found
+```
 
-Example:
+## Citizen Validation
+Before a complaint is created, the Complaint Service sends `GET /citizens/<citizen_id>` to the Citizen Service at `http://localhost:5001`.
 
-```text
-GET /complaints/1
+- `200 OK` → citizen is valid, complaint is created
+- `404 Not Found` → complaint is rejected with `400 Bad Request`
+- Citizen Service unreachable → `503 Service Unavailable`
+
+---
+
+# 3. Scheme & Feedback Service
+
+## Description
+The Scheme & Feedback Service has two responsibilities:
+
+1. **Complaint Feedback** — after a complaint has been filed, the citizen can confirm whether it was actually solved, give a satisfaction rating, and leave comments. If the citizen reports the problem is **not solved**, it is flagged as a priority for review.
+2. **Scheme Bill Calculation** — calculates a citizen's electricity bill based on two real Karnataka Government schemes:
+   - **Gruha Jyothi** — the first 200 units of electricity per month are free.
+   - **Gruha Lakshmi** — women (head of household) receive a Rs. 2000 monthly benefit, deducted from the final bill.
+
+This service does not access `citizen.db` or `complaint.db` directly. It verifies data through REST calls to Citizen Service and Complaint Service.
+
+### Port
+```
+5003
+```
+
+### Base URL
+```
+http://127.0.0.1:5003
+```
+
+### Database
+```
+scheme-feedback-service/database/scheme_feedback.db
+```
+
+## Feedback API Endpoints
+
+### Submit Feedback
+```
+POST /feedback/<complaint_id>
+```
+
+Example request:
+```json
+{
+    "actually_solved": "No",
+    "satisfaction_rating": 2,
+    "comments": "Pothole still not fixed"
+}
 ```
 
 Example response:
-
 ```json
 {
-    "complaint_id": 1,
-    "citizen_id": 1,
-    "description": "Large pothole near college gate",
-    "location": "Ward 12",
-    "status": "OPEN"
+    "feedback_id": 1,
+    "complaint_id": 5,
+    "complaint_status": "OPEN",
+    "actually_solved": "No",
+    "satisfaction_rating": 2,
+    "comments": "Pothole still not fixed"
 }
 ```
 
-If the complaint does not exist:
+If `actually_solved` is `"No"`, the frontend displays the complaint as **Marked as Priority** for review.
 
-```text
-404 Not Found
+### Get Feedback
+```
+GET /feedback/<complaint_id>
 ```
 
----
+## Scheme Bill API Endpoints
 
-# REST Communication Between Services
+### Calculate Bill
+```
+POST /scheme/<citizen_id>
+```
 
-The Complaint Service communicates with the Citizen Service before creating a complaint.
+Example request:
+```json
+{
+    "units_consumed": 350,
+    "is_woman": true
+}
+```
 
-The communication flow is:
+Example response:
+```json
+{
+    "bill_id": 1,
+    "citizen_id": 3,
+    "citizen_name": "Ravi",
+    "units_consumed": 350,
+    "free_units": 200,
+    "electricity_charge_before_lakshmi": 900,
+    "gruha_jyothi_discount": 1200,
+    "is_woman": true,
+    "gruha_lakshmi_amount": 2000,
+    "final_amount": 0
+}
+```
 
-```text
-User
- |
- | Submit Complaint
- v
-Complaint Service
-Port 5002
- |
- | GET /citizens/<citizen_id>
- v
-Citizen Service
-Port 5001
- |
- v
-citizen.db
- |
- | Citizen details / error
- v
-Complaint Service
- |
- | If citizen exists
- v
+The final amount never goes below zero, even if the Gruha Lakshmi amount exceeds the electricity charge.
+
+### Get Bill
+```
+GET /scheme/<citizen_id>
+```
+
+## REST Communication
+
+```
+Scheme & Feedback Service
+        |
+        | GET /complaints/<complaint_id>
+        v
+Complaint Service (Port 5002)
+        |
+        v
 complaint.db
 ```
 
-The Complaint Service does not directly access the Citizen Service database.
-
-Instead, it communicates with the Citizen Service through its REST API.
-
-This maintains service independence and follows the basic principles of microservices architecture.
-
----
-
-# Citizen Validation
-
-Before a complaint is created, the Complaint Service verifies the provided citizen ID.
-
-The Complaint Service sends:
-
-```text
-GET /citizens/<citizen_id>
 ```
-
-to:
-
-```text
-http://localhost:5001
-```
-
-For example:
-
-```text
-GET /citizens/1
-```
-
-If the Citizen Service returns:
-
-```text
-200 OK
-```
-
-the citizen is considered valid and the complaint is created.
-
-If the Citizen Service returns:
-
-```text
-404 Not Found
-```
-
-the Complaint Service rejects the complaint.
-
----
-
-# Error Handling
-
-The Complaint Service handles different service communication scenarios.
-
-## Case 1: Valid Citizen
-
-When a valid citizen ID is provided:
-
-```text
-Complaint Service
+Scheme & Feedback Service
         |
-        | GET /citizens/1
+        | GET /citizens/<citizen_id>
         v
-Citizen Service
-        |
-        | 200 OK
-        v
-Citizen verified
+Citizen Service (Port 5001)
         |
         v
-Complaint created
-```
-
-Expected response:
-
-```text
-201 Created
+citizen.db
 ```
 
 ---
 
-## Case 2: Invalid Citizen
+# 4. API Gateway
 
-When an invalid citizen ID such as `999` is provided:
+## Description
+The API Gateway acts as the single entry point for all client requests. It does not contain business logic — it forwards ("proxies") each incoming request to whichever backend service owns that path.
 
-```text
-Complaint Service
-        |
-        | GET /citizens/999
-        v
-Citizen Service
-        |
-        | 404 Not Found
-        v
-Complaint rejected
+### Port
+```
+5000
 ```
 
-The Complaint Service returns:
-
-```text
-400 Bad Request
+### Base URL
+```
+http://127.0.0.1:5000
 ```
 
-with:
+## Routing Rules
 
-```json
-{
-    "error": "Citizen does not exist"
-}
+| Path            | Forwarded To                        |
+| --------------- | ------------------------------------ |
+| `/citizens/*`   | Citizen Service (`:5001`)            |
+| `/complaints/*` | Complaint Service (`:5002`)          |
+| `/feedback/*`   | Scheme & Feedback Service (`:5003`)  |
+| `/scheme/*`     | Scheme & Feedback Service (`:5003`)  |
+
+## Example
+
+Instead of calling three different ports directly, a client can call the Gateway on one address:
+
+```
+POST http://localhost:5000/citizens
+POST http://localhost:5000/complaints
+POST http://localhost:5000/scheme/3
 ```
 
-No complaint is created for the invalid citizen.
-
----
-
-## Case 3: Citizen Service Unavailable
-
-If the Citizen Service is stopped or unavailable:
-
-```text
-Complaint Service
-       |
-       X
-Citizen Service unavailable
-       |
-       v
-503 Service Unavailable
-```
-
-The Complaint Service returns:
-
-```text
-503 Service Unavailable
-```
-
-with:
-
-```json
-{
-    "error": "Citizen Service is unavailable"
-}
-```
-
----
-
-# Integration Testing
-
-The communication between the two microservices was tested using three scenarios.
-
-## Test 1 - Valid Citizen
-
-Input:
-
-```text
-Citizen ID: 1
-```
-
-Example complaint:
-
-```text
-Description: Large pothole near college gate
-Location: Ward 12
-```
-
-Expected flow:
-
-```text
-GET /citizens/1 → 200
-POST /complaints → 201
-```
-
-Result:
-
-```text
-Complaint successfully registered.
-```
-
-**Status: PASSED**
-
----
-
-## Test 2 - Invalid Citizen
-
-Input:
-
-```text
-Citizen ID: 999
-```
-
-Expected flow:
-
-```text
-GET /citizens/999 → 404
-POST /complaints → 400
-```
-
-Result:
-
-```text
-Citizen does not exist.
-Complaint is not created.
-```
-
-**Status: PASSED**
-
----
-
-## Test 3 - Citizen Service Unavailable
-
-The Citizen Service was stopped while the Complaint Service remained running.
-
-Expected result:
-
-```text
-POST /complaints → 503
-```
-
-Response:
-
-```json
-{
-    "error": "Citizen Service is unavailable"
-}
-```
-
-Result:
-
-```text
-Complaint creation is rejected because the Citizen Service is unavailable.
-```
-
-**Status: PASSED**
+The Gateway inspects the path of each request and forwards it to the correct service, then returns that service's response unchanged. If the target service is unreachable, the Gateway returns `503 Service Unavailable`.
 
 ---
 
 # Technologies Used
 
 ### Backend
-
-* Python
-* Flask
-* Flask-CORS
-* Requests
+- Python
+- Flask
+- Flask-CORS
+- Requests
 
 ### Database
-
-* SQLite
+- SQLite
 
 ### Frontend
-
-* HTML5
-* CSS3
-* JavaScript
+- HTML5
+- CSS3
+- JavaScript
 
 ### Version Control
-
-* Git
-* GitHub
+- Git
+- GitHub
 
 ---
 
 # Installation
 
 ## Prerequisites
+- Python 3
+- Git
+- A web browser
+- Visual Studio Code (recommended)
 
-Make sure the following are installed:
-
-* Python 3
-* Git
-* A web browser
-* Visual Studio Code (recommended)
-
----
-
-# Install Python Dependencies
-
-Open Git CMD or Command Prompt and run:
-
-```cmd
-pip install flask flask-cors requests
+## Install Python Dependencies
 ```
-
-Required packages:
-
-```text
-Flask
-Flask-CORS
-Requests
+pip install flask flask-cors requests
 ```
 
 ---
 
 # Running the Application
 
-Both services need to be running at the same time for REST communication.
-
----
+All four components need to be running at the same time for full REST communication. Open a separate terminal for each.
 
 ## Start Citizen Service
-
-Open a terminal and navigate to:
-
-```cmd
-cd citizen-service\backend
 ```
-
-Run:
-
-```cmd
+cd citizen-service\backend
 python app.py
 ```
-
-The service runs on:
-
-```text
-http://127.0.0.1:5001
-```
-
-Keep this terminal running.
-
----
+Runs on `http://127.0.0.1:5001`
 
 ## Start Complaint Service
-
-Open another terminal and navigate to:
-
-```cmd
-cd complaint-service\backend
 ```
-
-Run:
-
-```cmd
+cd complaint-service\backend
 python app.py
 ```
+Runs on `http://127.0.0.1:5002`
 
-The service runs on:
-
-```text
-http://127.0.0.1:5002
+## Start Scheme & Feedback Service
 ```
+cd scheme-feedback-service\backend
+python app.py
+```
+Runs on `http://127.0.0.1:5003`
+(Requires Citizen Service and Complaint Service to be running)
 
-Keep this terminal running.
-
-Both services should be running simultaneously for REST communication.
+## Start API Gateway
+```
+cd api-gateway
+python app.py
+```
+Runs on `http://127.0.0.1:5000`
+(Requires all three services above to be running)
 
 ---
 
 # Running the Frontend
 
-The frontend is implemented using HTML, CSS, and JavaScript.
-
 ## Citizen Frontend
-
-Open:
-
-```text
+```
 citizen-service/frontend/index.html
 ```
-
-The Citizen Service frontend allows users to interact with the Citizen Service.
-
----
+Register citizens with name, ward, phone, and gender. Look up a citizen by ID.
 
 ## Complaint Frontend
-
-Open:
-
-```text
+```
 complaint-service/frontend/index.html
 ```
+Submit a complaint using a Citizen ID, description, and location. Track an existing complaint.
 
-The Complaint Service frontend allows users to:
-
-* Enter a Citizen ID
-* Submit a civic complaint
-* Enter the issue description
-* Enter the location
-* Track an existing complaint
-* View complaint status
+## Scheme & Feedback Frontend
+```
+scheme-feedback-service/frontend/index.html
+```
+Submit feedback on a resolved complaint, and calculate a Gruha Jyothi / Gruha Lakshmi electricity bill for a citizen.
 
 ---
 
 # Example Workflow
 
-A typical complaint submission works as follows:
-
-```text
-1. User enters Citizen ID
-            |
-            v
-2. User enters complaint details
-            |
-            v
-3. Complaint Service receives request
-            |
-            v
-4. Complaint Service contacts Citizen Service
-            |
-            v
-5. Citizen Service verifies citizen
-            |
-            v
-6. Citizen exists?
-       /           \
-     YES            NO
-      |              |
-      v              v
-Create complaint   Reject request
-      |              |
-      v              v
-   201 Created     400 Error
 ```
-
-If the Citizen Service is unavailable:
-
-```text
-Complaint Service
-       |
-       X
-Citizen Service unavailable
-       |
-       v
-503 Service Unavailable
+1. Register a citizen (Citizen Service)
+            |
+            v
+2. Submit a complaint for that citizen (Complaint Service)
+   - Complaint Service verifies the citizen via REST call
+            |
+            v
+3. Submit feedback for that complaint (Scheme & Feedback Service)
+   - Verifies the complaint exists via REST call to Complaint Service
+   - If "not solved", flagged as priority
+            |
+            v
+4. Calculate the citizen's scheme bill (Scheme & Feedback Service)
+   - Verifies the citizen exists via REST call to Citizen Service
+   - Applies Gruha Jyothi and Gruha Lakshmi rules
 ```
 
 ---
@@ -741,107 +529,47 @@ Citizen Service unavailable
 # Microservices Design Principles Used
 
 ## Independent Services
-
-Citizen Service and Complaint Service run independently on different ports.
-
-```text
-Citizen Service → 5001
-Complaint Service → 5002
+```
+Citizen Service            -> 5001
+Complaint Service          -> 5002
+Scheme & Feedback Service  -> 5003
+API Gateway                -> 5000
 ```
 
 ## Independent Databases
-
-Each service owns its own database.
-
-```text
-Citizen Service → citizen.db
-Complaint Service → complaint.db
+```
+Citizen Service            -> citizen.db
+Complaint Service          -> complaint.db
+Scheme & Feedback Service  -> scheme_feedback.db
 ```
 
 ## REST-Based Communication
-
-The services communicate through HTTP REST APIs.
-
-```text
-Complaint Service
-       |
-       | REST API
-       v
-Citizen Service
+```
+Complaint Service           -> REST -> Citizen Service
+Scheme & Feedback Service   -> REST -> Citizen Service
+Scheme & Feedback Service   -> REST -> Complaint Service
 ```
 
 ## Service Isolation
+No service accesses another service's database directly. All cross-service data access happens through REST endpoints.
 
-The Complaint Service does not directly access the Citizen Service database.
-
-Instead, it uses:
-
-```text
-GET /citizens/<citizen_id>
-```
-
-to communicate with the Citizen Service.
-
----
-
-# Git and GitHub
-
-The project is maintained using Git and GitHub.
-
-The project uses separate branches to manage development work safely.
-
-Current development branch:
-
-```text
-citizen-service
-```
-
-The Citizen Service implementation and Citizen-Complaint REST integration have been committed and pushed to the development branch.
-
-The group repository's main branch is maintained separately to prevent accidental overwriting of other team members' work.
-
----
-
-# Current Team Work
-
-This is a group project consisting of multiple microservices.
-
-Current services:
-
-* **Citizen Service** - Implemented
-* **Complaint Service** - Implemented
-* **Third Microservice** - To be decided after discussion with the instructor
-
-The third microservice will be added after the requirements are finalized.
+## Single Entry Point
+The API Gateway provides one address for clients to interact with, hiding the internal port structure of the individual services.
 
 ---
 
 # Future Scope
 
-The following features can be added in future development:
-
-* Third microservice
-* Integration with the third service
-* Improved user interface
-* Authentication and authorization
-* More detailed complaint tracking
-* Complaint status updates
-* Ward-based complaint management
-* Centralized API gateway
-* Logging and monitoring
-* Docker containerization
-* Automated testing
-* Improved error handling
+- Authentication and authorization
+- Wiring the frontends to call the API Gateway instead of individual service ports
+- Complaint status updates (marking complaints as RESOLVED)
+- Admin dashboard to view all citizens/complaints
+- Logging and monitoring
+- Docker containerization
+- Automated testing
 
 ---
 
 # Conclusion
 
-The Community Civic Microservices project demonstrates how a civic application can be divided into independent microservices.
-
-The current implementation includes a Citizen Service and Complaint Service with separate databases and REST-based communication.
-
-The Complaint Service validates citizens through the Citizen Service before creating complaints and handles valid citizen, invalid citizen, and unavailable-service scenarios appropriately.
-
-The third microservice will be added after discussion and approval of the requirements.
-
+The Community Civic Microservices project demonstrates how a civic application can be divided into independent microservices. The system now includes a Citizen Service, Complaint Service, Scheme & Feedback Service, and a centralized API Gateway, each with clearly separated responsibilities and REST-based communication between services.
