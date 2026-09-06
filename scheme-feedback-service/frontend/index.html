@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Scheme &amp; Feedback Service</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+  <h1>Community Civic Portal</h1>
+
+  <h2>Complaint Feedback</h2>
+  <form id="feedbackForm">
+    <label>Complaint ID</label>
+    <input type="number" id="complaintId" required>
+
+    <label>Is your problem actually solved?</label>
+    <select id="actuallySolved">
+      <option value="Yes">Yes</option>
+      <option value="No">No</option>
+    </select>
+
+    <label>Satisfaction Rating (1-5)</label>
+    <input type="number" id="rating" min="1" max="5" required>
+
+    <label>Comments</label>
+    <textarea id="comments"></textarea>
+
+    <button type="submit">Submit Feedback</button>
+  </form>
+  <div id="feedbackResult"></div>
+
+  <hr>
+
+  <h2>Gruha Jyothi / Gruha Lakshmi Bill</h2>
+  <form id="schemeForm">
+    <label>Citizen ID</label>
+    <input type="number" id="citizenId" required>
+
+    <label>Units Consumed This Month</label>
+    <input type="number" id="units" required>
+
+    <label>
+      <input type="checkbox" id="isWoman"> Citizen is a woman (Gruha Lakshmi eligible)
+    </label>
+
+    <button type="submit">Calculate Bill</button>
+  </form>
+  <div id="schemeResult"></div>
+</div>
+<script src="script.js"></script>
+</body>
+</html>

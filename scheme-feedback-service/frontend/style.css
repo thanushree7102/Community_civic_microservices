@@ -1,0 +1,43 @@
+body {
+  font-family: Arial, sans-serif;
+  background: #f4f4f4;
+}
+.container {
+  width: 500px;
+  margin: 50px auto;
+  background: white;
+  padding: 30px;
+  border-radius: 10px;
+}
+h1 { text-align: center; }
+label {
+  display: block;
+  margin-top: 15px;
+}
+input, select, textarea {
+  width: 100%;
+  padding: 10px;
+  margin-top: 5px;
+  box-sizing: border-box;
+}
+textarea { height: 80px; }
+input[type="checkbox"] {
+  width: auto;
+  margin-right: 8px;
+}
+button {
+  margin-top: 20px;
+  padding: 10px 20px;
+}
+#feedbackResult, #schemeResult {
+  margin-top: 20px;
+  padding: 15px;
+  border-radius: 8px;
+  background: #eef6ff;
+  border: 1px solid #a9cdfa;
+}
+.bill-amount {
+  font-size: 22px;
+  font-weight: bold;
+  color: #1c5e1c;
+}
