@@ -7,18 +7,27 @@ import logging
 app = Flask(__name__)
 CORS(app)
 
-# -----------------------------
+# ============================================================
 # Microservice URLs
-# -----------------------------
+# ============================================================
 
 CITIZEN_SERVICE_URL = "http://localhost:5001"
-COMPLAINT_SERVICE_URL = "http://localhost:5002"
+
+# Complaint Service has two instances for load balancing
+COMPLAINT_SERVICE_URLS = [
+    "http://localhost:5002",
+    "http://localhost:5004"
+]
+
+complaint_service_index = 0
+
 EMERGENCY_SERVICE_URL = "http://localhost:5003"
 
-# -----------------------------
+
+# ============================================================
 # Rate Limiting
-# Maximum 100 requests/minute
-# -----------------------------
+# Maximum 100 requests/minute per client
+# ============================================================
 
 RATE_LIMIT = 100
 request_log = {}
@@ -42,12 +51,13 @@ def check_rate_limit():
         return False
 
     request_log[client_ip].append(current_time)
+
     return True
 
 
-# -----------------------------
+# ============================================================
 # Logging
-# -----------------------------
+# ============================================================
 
 logging.basicConfig(
     level=logging.INFO,
@@ -55,9 +65,9 @@ logging.basicConfig(
 )
 
 
-# -----------------------------
+# ============================================================
 # Security Headers
-# -----------------------------
+# ============================================================
 
 @app.after_request
 def add_security_headers(response):
@@ -68,9 +78,9 @@ def add_security_headers(response):
     return response
 
 
-# -----------------------------
+# ============================================================
 # Global Request Logging
-# -----------------------------
+# ============================================================
 
 @app.before_request
 def log_request():
@@ -82,9 +92,9 @@ def log_request():
     )
 
 
-# -----------------------------
+# ============================================================
 # Rate Limit Middleware
-# -----------------------------
+# ============================================================
 
 @app.before_request
 def rate_limit():
@@ -98,9 +108,9 @@ def rate_limit():
         }), 429
 
 
-# -----------------------------
+# ============================================================
 # Forward Request
-# -----------------------------
+# ============================================================
 
 def forward_request(target_url, path):
     url = f"{target_url}/{path}"
@@ -121,7 +131,10 @@ def forward_request(target_url, path):
         )
 
     except requests.exceptions.RequestException:
-        logging.error("Service unavailable: %s", target_url)
+        logging.error(
+            "Service unavailable: %s",
+            target_url
+        )
 
         return jsonify({
             "error": f"Service at {target_url} is unavailable"
@@ -138,14 +151,40 @@ def forward_request(target_url, path):
 
 
 # ============================================================
+# Complaint Load Balancer
+# Round-robin between port 5002 and port 5004
+# ============================================================
+
+def forward_complaint_request(path):
+    global complaint_service_index
+
+    target_url = COMPLAINT_SERVICE_URLS[complaint_service_index]
+
+    # Move to the next instance for the next request
+    complaint_service_index = (
+        complaint_service_index + 1
+    ) % len(COMPLAINT_SERVICE_URLS)
+
+    logging.info(
+        "Load Balancer selected Complaint Service: %s",
+        target_url
+    )
+
+    return forward_request(
+        target_url,
+        path
+    )
+
+
+# ============================================================
 # API VERSION 1
 # ============================================================
 
 
-# -----------------------------
+# ============================================================
 # Citizen Service
 # /api/v1/citizens/*
-# -----------------------------
+# ============================================================
 
 @app.route(
     "/api/v1/citizens",
@@ -165,10 +204,10 @@ def route_citizens(path):
     )
 
 
-# -----------------------------
-# Complaint Service
+# ============================================================
+# Complaint Service with Load Balancing
 # /api/v1/complaints/*
-# -----------------------------
+# ============================================================
 
 @app.route(
     "/api/v1/complaints",
@@ -182,16 +221,15 @@ def route_citizens(path):
 def route_complaints(path):
     full_path = f"complaints/{path}" if path else "complaints"
 
-    return forward_request(
-        COMPLAINT_SERVICE_URL,
+    return forward_complaint_request(
         full_path
     )
 
 
-# -----------------------------
+# ============================================================
 # Emergency Service
 # /api/v1/emergencies/*
-# -----------------------------
+# ============================================================
 
 @app.route(
     "/api/v1/emergencies",
@@ -211,27 +249,42 @@ def route_emergencies(path):
     )
 
 
-# -----------------------------
+# ============================================================
 # Gateway Health Check
-# -----------------------------
+# ============================================================
 
 @app.route("/", methods=["GET"])
 def health_check():
     return jsonify({
         "message": "API Gateway is running",
         "port": 5000,
+
         "routes": {
-            "/api/v1/citizens/*": "Citizen Service (port 5001)",
-            "/api/v1/complaints/*": "Complaint Service (port 5002)",
-            "/api/v1/emergencies/*": "Emergency Service (port 5003)"
+            "/api/v1/citizens/*":
+                "Citizen Service (port 5001)",
+
+            "/api/v1/complaints/*":
+                "Complaint Service Load Balanced (ports 5002, 5004)",
+
+            "/api/v1/emergencies/*":
+                "Emergency Service (port 5003)"
         },
+
+        "load_balancing": {
+            "complaint_service_instances": [
+                "http://localhost:5002",
+                "http://localhost:5004"
+            ],
+            "algorithm": "Round Robin"
+        },
+
         "rate_limit": "100 requests per minute"
     })
 
 
-# -----------------------------
+# ============================================================
 # Run Gateway
-# -----------------------------
+# ============================================================
 
 if __name__ == "__main__":
     app.run(
