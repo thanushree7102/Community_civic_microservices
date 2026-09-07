@@ -7,12 +7,11 @@ CORS(app)
 
 CITIZEN_SERVICE_URL = "http://localhost:5001"
 COMPLAINT_SERVICE_URL = "http://localhost:5002"
-SCHEME_FEEDBACK_SERVICE_URL = "http://localhost:5003"
+SURVEY_SERVICE_URL = "http://localhost:5003"
 
 
 def forward_request(target_url, path):
     url = f"{target_url}/{path}"
-
     try:
         response = requests.request(
             method=request.method,
@@ -25,7 +24,6 @@ def forward_request(target_url, path):
         return jsonify({
             "error": f"Service at {target_url} is unavailable"
         }), 503
-
     return Response(
         response.content,
         status=response.status_code,
@@ -47,14 +45,9 @@ def route_complaints(path):
     return forward_request(COMPLAINT_SERVICE_URL, full_path)
 
 
-@app.route("/feedback/<path:path>", methods=["GET", "POST"])
-def route_feedback(path):
-    return forward_request(SCHEME_FEEDBACK_SERVICE_URL, f"feedback/{path}")
-
-
-@app.route("/scheme/<path:path>", methods=["GET", "POST"])
-def route_scheme(path):
-    return forward_request(SCHEME_FEEDBACK_SERVICE_URL, f"scheme/{path}")
+@app.route("/survey/<path:path>", methods=["GET", "POST"])
+def route_survey(path):
+    return forward_request(SURVEY_SERVICE_URL, f"survey/{path}")
 
 
 @app.route("/", methods=["GET"])
@@ -64,8 +57,7 @@ def health_check():
         "routes": {
             "/citizens/*": "Citizen Service (port 5001)",
             "/complaints/*": "Complaint Service (port 5002)",
-            "/feedback/*": "Scheme & Feedback Service (port 5003)",
-            "/scheme/*": "Scheme & Feedback Service (port 5003)"
+            "/survey/*": "Survey Service (port 5003)"
         }
     })
 
