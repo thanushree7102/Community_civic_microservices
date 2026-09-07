@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Community Civic - Emergency Service</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div class="container">
+        <h1>Emergency Service</h1>
+        <p class="subtitle">Report and manage civic emergencies</p>
+
+        <div id="message"></div>
+
+        <form id="emergencyForm">
+            <label for="citizenId">Citizen ID</label>
+            <input type="number" id="citizenId" required>
+
+            <label for="type">Emergency Type</label>
+            <select id="type" required>
+                <option value="">Select type</option>
+                <option value="FIRE">Fire</option>
+                <option value="ACCIDENT">Accident</option>
+                <option value="MEDICAL">Medical</option>
+                <option value="GAS_LEAK">Gas Leak</option>
+                <option value="BUILDING_COLLAPSE">Building Collapse</option>
+                <option value="OTHER">Other</option>
+            </select>
+
+            <label for="description">Description</label>
+            <textarea id="description" required></textarea>
+
+            <label for="location">Location</label>
+            <input type="text" id="location" required>
+
+            <label for="severity">Severity</label>
+            <select id="severity" required>
+                <option value="">Select severity</option>
+                <option value="LOW">Low</option>
+                <option value="MEDIUM">Medium</option>
+                <option value="HIGH">High</option>
+                <option value="CRITICAL">Critical</option>
+            </select>
+
+            <button type="submit">Report Emergency</button>
+        </form>
+
+        <hr>
+
+        <h2>Reported Emergencies</h2>
+
+        <button id="loadEmergencies">Refresh Emergencies</button>
+
+        <div id="emergencyList"></div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
