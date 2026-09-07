@@ -11,84 +11,71 @@ DATABASE = os.path.join(
     "../database/citizen.db"
 )
 
-
 def get_db():
     return sqlite3.connect(DATABASE)
 
-
 def initialize_database():
     db = get_db()
-
     db.execute("""
         CREATE TABLE IF NOT EXISTS citizens (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL,
             ward TEXT NOT NULL,
-            phone TEXT NOT NULL
+            phone TEXT NOT NULL,
+            gender TEXT NOT NULL
         )
     """)
-
     db.commit()
     db.close()
-
 
 @app.route("/citizens", methods=["POST"])
 def create_citizen():
     data = request.json
-
     name = data["name"]
     ward = data["ward"]
     phone = data["phone"]
+    gender = data["gender"]
 
     db = get_db()
     cursor = db.cursor()
-
     cursor.execute("""
-        INSERT INTO citizens (name, ward, phone)
-        VALUES (?, ?, ?)
-    """, (name, ward, phone))
-
+        INSERT INTO citizens (name, ward, phone, gender)
+        VALUES (?, ?, ?, ?)
+    """, (name, ward, phone, gender))
     db.commit()
-
     citizen_id = cursor.lastrowid
-
     db.close()
 
     return jsonify({
         "citizen_id": citizen_id,
         "name": name,
         "ward": ward,
-        "phone": phone
+        "phone": phone,
+        "gender": gender
     }), 201
-
 
 @app.route("/citizens/<int:citizen_id>", methods=["GET"])
 def get_citizen(citizen_id):
     db = get_db()
     cursor = db.cursor()
-
     cursor.execute("""
-        SELECT id, name, ward, phone
+        SELECT id, name, ward, phone, gender
         FROM citizens
         WHERE id = ?
     """, (citizen_id,))
-
     citizen = cursor.fetchone()
-
     db.close()
 
     if citizen is None:
-        return jsonify({
-            "error": "Citizen not found"
-        }), 404
+        return jsonify({"error": "Citizen not found"}), 404
 
     return jsonify({
         "citizen_id": citizen[0],
         "name": citizen[1],
         "ward": citizen[2],
-        "phone": citizen[3]
+        "phone": citizen[3],
+        "gender": citizen[4]
     })
-
 
 if __name__ == "__main__":
     initialize_database()

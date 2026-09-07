@@ -1,20 +1,26 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Scheme &amp; Feedback Service</title>
+  <title>Complaint Survey</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
 <div class="container">
   <h1>Community Civic Portal</h1>
+  <h2>Complaint Survey</h2>
 
-  <h2>Complaint Feedback</h2>
-  <form id="feedbackForm">
+  <form id="surveyForm">
     <label>Complaint ID</label>
     <input type="number" id="complaintId" required>
 
     <label>Is your problem actually solved?</label>
     <select id="actuallySolved">
+      <option value="Yes">Yes</option>
+      <option value="No">No</option>
+    </select>
+
+    <label>Are you aware of the Gruha Jyothi / Gruha Lakshmi electricity scheme?</label>
+    <select id="awareOfScheme">
       <option value="Yes">Yes</option>
       <option value="No">No</option>
     </select>
@@ -25,27 +31,10 @@
     <label>Comments</label>
     <textarea id="comments"></textarea>
 
-    <button type="submit">Submit Feedback</button>
+    <button type="submit">Submit Survey</button>
   </form>
-  <div id="feedbackResult"></div>
 
-  <hr>
-
-  <h2>Gruha Jyothi / Gruha Lakshmi Bill</h2>
-  <form id="schemeForm">
-    <label>Citizen ID</label>
-    <input type="number" id="citizenId" required>
-
-    <label>Units Consumed This Month</label>
-    <input type="number" id="units" required>
-
-    <label>
-      <input type="checkbox" id="isWoman"> Citizen is a woman (Gruha Lakshmi eligible)
-    </label>
-
-    <button type="submit">Calculate Bill</button>
-  </form>
-  <div id="schemeResult"></div>
+  <div id="result"></div>
 </div>
 <script src="script.js"></script>
 </body>

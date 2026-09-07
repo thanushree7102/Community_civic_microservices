@@ -21,15 +21,27 @@ document.getElementById("feedbackForm")
     const resultDiv = document.getElementById("feedbackResult");
 
     if (!response.ok) {
+      resultDiv.className = "";
       resultDiv.innerHTML = `<b>Error:</b> ${data.error}`;
       return;
     }
 
-    resultDiv.innerHTML =
-      `<h3>Feedback Submitted</h3>
-       Complaint Status: ${data.complaint_status}<br>
-       Actually Solved: ${data.actually_solved}<br>
-       Rating: ${data.satisfaction_rating}/5`;
+    if (data.actually_solved === "No") {
+      resultDiv.className = "priority-alert";
+      resultDiv.innerHTML =
+        `<h3>Marked as Priority</h3>
+         This complaint was reported as NOT solved.
+         We are making this a top priority for review.<br><br>
+         Complaint Status (system): ${data.complaint_status}<br>
+         Rating: ${data.satisfaction_rating}/5`;
+    } else {
+      resultDiv.className = "";
+      resultDiv.innerHTML =
+        `<h3>Feedback Submitted</h3>
+         Complaint Status: ${data.complaint_status}<br>
+         Actually Solved: ${data.actually_solved}<br>
+         Rating: ${data.satisfaction_rating}/5`;
+    }
   });
 
 document.getElementById("schemeForm")

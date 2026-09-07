@@ -41,3 +41,8 @@ button {
   font-weight: bold;
   color: #1c5e1c;
 }
+.priority-alert {
+  background: #ffe3e3;
+  border: 2px solid #d33;
+  color: #a10000;
+}
