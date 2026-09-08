@@ -1,6 +1,6 @@
 # Community Civic Microservices
 
-A microservices-based Community Civic Portal designed to manage citizens and civic complaints through independent services communicating using REST APIs.
+A microservices-based Community Civic Portal designed to manage citizens, civic complaints, and complaint surveys through independent services communicating using REST APIs.
 
 This project is developed as a group project. Each microservice has its own backend, frontend, and database where required.
 
@@ -8,54 +8,87 @@ This project is developed as a group project. Each microservice has its own back
 
 ## Project Overview
 
-The Community Civic Portal provides a simple platform for managing citizen information, registering civic complaints, collecting complaint feedback, and calculating Karnataka government scheme benefits.
+The Community Civic Portal provides a simple platform for:
 
-The system consists of:
+- Managing citizen information
+- Registering and tracking civic complaints
+- Collecting survey feedback about complaints
+- Providing a centralized API Gateway for accessing all services
+
+The system currently consists of:
 
 1. **Citizen Service**
 2. **Complaint Service**
-3. **Scheme & Feedback Service**
+3. **Survey Service**
 4. **API Gateway**
 
-The Citizen Service and Complaint Service are implemented as independent microservices. The Complaint Service communicates with the Citizen Service through a REST API to verify whether a citizen exists before registering a complaint. The Scheme & Feedback Service communicates with both the Citizen Service and the Complaint Service. The API Gateway acts as a single entry point that routes requests to the correct service.
+The Citizen Service and Complaint Service are implemented as independent microservices. The Complaint Service communicates with the Citizen Service through a REST API to verify whether a citizen exists before registering a complaint.
 
+The Survey Service communicates with the Complaint Service through a REST API to verify whether a complaint exists before submitting a survey.
 
----
-
-## System Architecture
-
-```
-                        Community Civic Portal
-                                |
-                        API Gateway (Port 5000)
-                                |
-        +---------------+---------------+---------------------+
-        |               |               |                     |
-        v               v               v                     |
-Citizen Service   Complaint Service   Scheme & Feedback Service
-  Port 5001            Port 5002              Port 5003
-        |               |                     |         |
-        v               |                     v         v
-   citizen.db           |            scheme_feedback.db |
-                         |                               |
-                    REST API                        REST API
-              GET /citizens/<id>            GET /citizens/<id>
-                    <---------------------------------+
-                                                        |
-                         REST API                       |
-                   GET /complaints/<id>                 |
-                         <-------------------------------+
-                         v
-                   complaint.db
-```
-
-No service accesses another service's database directly. All cross-service communication happens through REST APIs.
+The API Gateway acts as a single entry point that routes requests to the correct service.
 
 ---
 
-## Project Structure
+# System Architecture
 
+```text
+                         Community Civic Portal
+                                  |
+                                  v
+                         API Gateway :5000
+                                  |
+              +-------------------+-------------------+
+              |                   |                   |
+              v                   v                   v
+       Citizen Service     Complaint Service     Survey Service
+          :5001                :5002                :5003
+              |                   |                   |
+              v                   v                   v
+         citizen.db         complaint.db          survey.db
+                                  ^
+                                  |
+                                  |
+                         REST API Communication
+                         GET /complaints/<id>
+                                  |
+                                  |
+                           Survey Service
 ```
+
+### Service Communication
+
+```text
+Complaint Service
+       |
+       | GET /citizens/<citizen_id>
+       v
+Citizen Service
+       |
+       v
+citizen.db
+```
+
+```text
+Survey Service
+       |
+       | GET /complaints/<complaint_id>
+       v
+Complaint Service
+       |
+       v
+complaint.db
+```
+
+No service directly accesses another service's database.
+
+All cross-service communication happens through REST APIs.
+
+---
+
+# Project Structure
+
+```text
 Community_civic_microservices/
 │
 ├── citizen-service/
@@ -78,11 +111,11 @@ Community_civic_microservices/
 │       ├── style.css
 │       └── script.js
 │
-├── scheme-feedback-service/
+├── survey-service/
 │   ├── backend/
 │   │   └── app.py
 │   ├── database/
-│   │   └── scheme_feedback.db
+│   │   └── survey.db
 │   └── frontend/
 │       ├── index.html
 │       ├── style.css
@@ -99,60 +132,68 @@ Community_civic_microservices/
 # 1. Citizen Service
 
 ## Description
-The Citizen Service is responsible for storing and retrieving citizen information. It is an independent Flask microservice and maintains its own SQLite database.
+
+The Citizen Service is responsible for storing and retrieving citizen information.
+
+It is an independent Flask microservice and maintains its own SQLite database.
 
 ### Port
-```
+
+```text
 5001
 ```
 
 ### Base URL
-```
+
+```text
 http://127.0.0.1:5001
 ```
 
 ### Database
-```
+
+```text
 citizen-service/database/citizen.db
 ```
+
+---
 
 ## Citizen API Endpoints
 
 ### Create Citizen
-```
+
+```text
 POST /citizens
 ```
+
 Creates a new citizen.
 
 Example request:
-```json
-{
-    "name": "Ravi",
-    "ward": "12",
-    "phone": "9998887770",
-    "gender": "male"
-}
-```
 
-Example response:
 ```json
 {
-    "citizen_id": 3,
     "name": "Ravi",
-    "ward": "12",
     "phone": "9998887770",
-    "gender": "male"
+    "ward": "12"
 }
 ```
 
 ### Get Citizen
-```
+
+```text
 GET /citizens/<citizen_id>
 ```
+
 Retrieves the details of a citizen using the citizen ID.
 
-If the citizen does not exist:
+Example:
+
+```text
+GET /citizens/1
 ```
+
+If the citizen does not exist:
+
+```text
 404 Not Found
 ```
 
@@ -161,31 +202,45 @@ If the citizen does not exist:
 # 2. Complaint Service
 
 ## Description
-The Complaint Service is responsible for registering and tracking civic complaints. It verifies the citizen through the Citizen Service before creating a complaint.
+
+The Complaint Service is responsible for registering and tracking civic complaints.
+
+It is implemented as an independent Flask microservice and maintains its own SQLite database.
+
+Before creating a complaint, it verifies the citizen through the Citizen Service REST API.
 
 ### Port
-```
+
+```text
 5002
 ```
 
 ### Base URL
-```
+
+```text
 http://127.0.0.1:5002
 ```
 
 ### Database
-```
+
+```text
 complaint-service/database/complaint.db
 ```
+
+---
 
 ## Complaint API Endpoints
 
 ### Create Complaint
-```
+
+```text
 POST /complaints
 ```
 
+Creates a new civic complaint after verifying the citizen through the Citizen Service.
+
 Example request:
+
 ```json
 {
     "citizen_id": 1,
@@ -195,6 +250,7 @@ Example request:
 ```
 
 Example successful response:
+
 ```json
 {
     "complaint_id": 1,
@@ -207,205 +263,373 @@ Example successful response:
 ```
 
 ### Get Complaint
-```
+
+```text
 GET /complaints/<complaint_id>
 ```
 
-If the complaint does not exist:
+Retrieves the details of an existing complaint.
+
+Example:
+
+```text
+GET /complaints/1
 ```
+
+If the complaint does not exist:
+
+```text
 404 Not Found
 ```
 
-## Citizen Validation
-Before a complaint is created, the Complaint Service sends `GET /citizens/<citizen_id>` to the Citizen Service at `http://localhost:5001`.
+---
 
-- `200 OK` → citizen is valid, complaint is created
-- `404 Not Found` → complaint is rejected with `400 Bad Request`
-- Citizen Service unreachable → `503 Service Unavailable`
+## Citizen Validation
+
+Before a complaint is created, the Complaint Service sends:
+
+```text
+GET /citizens/<citizen_id>
+```
+
+to the Citizen Service:
+
+```text
+http://localhost:5001
+```
+
+### Possible Results
+
+```text
+200 OK
+```
+
+The citizen is valid and the complaint is created.
+
+```text
+404 Not Found
+```
+
+The citizen does not exist and the complaint is rejected.
+
+```text
+503 Service Unavailable
+```
+
+The Citizen Service is unavailable.
 
 ---
 
-# 3. Scheme & Feedback Service
+# 3. Survey Service
 
 ## Description
-The Scheme & Feedback Service has two responsibilities:
 
-1. **Complaint Feedback** — after a complaint has been filed, the citizen can confirm whether it was actually solved, give a satisfaction rating, and leave comments. If the citizen reports the problem is **not solved**, it is flagged as a priority for review.
-2. **Scheme Bill Calculation** — calculates a citizen's electricity bill based on two real Karnataka Government schemes:
-   - **Gruha Jyothi** — the first 200 units of electricity per month are free.
-   - **Gruha Lakshmi** — women (head of household) receive a Rs. 2000 monthly benefit, deducted from the final bill.
+The Survey Service collects feedback from citizens about their complaints.
 
-This service does not access `citizen.db` or `complaint.db` directly. It verifies data through REST calls to Citizen Service and Complaint Service.
+Before accepting a survey, it verifies that the complaint exists by communicating with the Complaint Service through a REST API.
+
+The Survey Service is an independent Flask microservice with its own SQLite database.
 
 ### Port
-```
+
+```text
 5003
 ```
 
 ### Base URL
-```
+
+```text
 http://127.0.0.1:5003
 ```
 
 ### Database
-```
-scheme-feedback-service/database/scheme_feedback.db
+
+```text
+survey-service/database/survey.db
 ```
 
-## Feedback API Endpoints
+---
 
-### Submit Feedback
-```
-POST /feedback/<complaint_id>
+## Survey API Endpoints
+
+### Submit Survey
+
+```text
+POST /survey/<complaint_id>
 ```
 
-Example request:
+Submits survey feedback for a particular complaint.
+
+Before storing the survey, the Survey Service calls:
+
+```text
+GET /complaints/<complaint_id>
+```
+
+on the Complaint Service.
+
+Example:
+
+```text
+GET http://localhost:5002/complaints/1
+```
+
+### Example Request
+
 ```json
 {
-    "actually_solved": "No",
-    "satisfaction_rating": 2,
-    "comments": "Pothole still not fixed"
+    "actually_solved": "Yes",
+    "aware_of_scheme": "Yes",
+    "satisfaction_rating": 4,
+    "comments": "The complaint was resolved successfully."
 }
 ```
 
-Example response:
+### Example Response
+
 ```json
 {
-    "feedback_id": 1,
-    "complaint_id": 5,
+    "survey_id": 1,
+    "complaint_id": 1,
     "complaint_status": "OPEN",
-    "actually_solved": "No",
-    "satisfaction_rating": 2,
-    "comments": "Pothole still not fixed"
+    "actually_solved": "Yes",
+    "aware_of_scheme": "Yes",
+    "satisfaction_rating": 4,
+    "comments": "The complaint was resolved successfully."
 }
 ```
 
-If `actually_solved` is `"No"`, the frontend displays the complaint as **Marked as Priority** for review.
+### Get Survey
 
-### Get Feedback
-```
-GET /feedback/<complaint_id>
-```
-
-## Scheme Bill API Endpoints
-
-### Calculate Bill
-```
-POST /scheme/<citizen_id>
+```text
+GET /survey/<complaint_id>
 ```
 
-Example request:
-```json
-{
-    "units_consumed": 350,
-    "is_woman": true
-}
+Retrieves the latest survey submitted for a complaint.
+
+Example:
+
+```text
+GET /survey/1
 ```
 
-Example response:
-```json
-{
-    "bill_id": 1,
-    "citizen_id": 3,
-    "citizen_name": "Ravi",
-    "units_consumed": 350,
-    "free_units": 200,
-    "electricity_charge_before_lakshmi": 900,
-    "gruha_jyothi_discount": 1200,
-    "is_woman": true,
-    "gruha_lakshmi_amount": 2000,
-    "final_amount": 0
-}
+If no survey exists:
+
+```text
+404 Not Found
 ```
 
-The final amount never goes below zero, even if the Gruha Lakshmi amount exceeds the electricity charge.
+---
 
-### Get Bill
-```
-GET /scheme/<citizen_id>
-```
+## Survey and Complaint Service Communication
 
-## REST Communication
+The Survey Service does not directly access `complaint.db`.
 
-```
-Scheme & Feedback Service
-        |
-        | GET /complaints/<complaint_id>
-        v
-Complaint Service (Port 5002)
-        |
-        v
+Instead, it communicates with the Complaint Service through:
+
+```text
+Survey Service
+     |
+     | GET /complaints/<complaint_id>
+     v
+Complaint Service
+     |
+     v
 complaint.db
 ```
 
+### Possible Results
+
+If the Complaint Service returns:
+
+```text
+200 OK
 ```
-Scheme & Feedback Service
-        |
-        | GET /citizens/<citizen_id>
-        v
-Citizen Service (Port 5001)
-        |
-        v
-citizen.db
+
+the complaint exists and the survey can be stored.
+
+If the Complaint Service returns:
+
+```text
+404 Not Found
 ```
+
+the survey is rejected because the complaint does not exist.
+
+If the Complaint Service is unavailable:
+
+```text
+503 Service Unavailable
+```
+
+the survey cannot be submitted.
 
 ---
 
 # 4. API Gateway
 
 ## Description
-The API Gateway acts as the single entry point for all client requests. It does not contain business logic — it forwards ("proxies") each incoming request to whichever backend service owns that path.
+
+The API Gateway acts as the single entry point for all client requests.
+
+It does not contain business logic.
+
+Instead, it forwards each incoming request to the appropriate backend microservice.
 
 ### Port
-```
+
+```text
 5000
 ```
 
 ### Base URL
-```
+
+```text
 http://127.0.0.1:5000
 ```
 
-## Routing Rules
+---
 
-| Path            | Forwarded To                        |
-| --------------- | ------------------------------------ |
-| `/citizens/*`   | Citizen Service (`:5001`)            |
-| `/complaints/*` | Complaint Service (`:5002`)          |
-| `/feedback/*`   | Scheme & Feedback Service (`:5003`)  |
-| `/scheme/*`     | Scheme & Feedback Service (`:5003`)  |
+## Gateway Routing Rules
 
-## Example
+| Client Path | Forwarded To |
+|---|---|
+| `/citizens/*` | Citizen Service (`5001`) |
+| `/complaints/*` | Complaint Service (`5002`) |
+| `/survey/*` | Survey Service (`5003`) |
 
-Instead of calling three different ports directly, a client can call the Gateway on one address:
+---
 
+## Example Gateway Requests
+
+Instead of directly calling each service:
+
+```text
+http://localhost:5001
+http://localhost:5002
+http://localhost:5003
 ```
+
+the client can use the API Gateway:
+
+### Citizen
+
+```text
 POST http://localhost:5000/citizens
-POST http://localhost:5000/complaints
-POST http://localhost:5000/scheme/3
 ```
 
-The Gateway inspects the path of each request and forwards it to the correct service, then returns that service's response unchanged. If the target service is unreachable, the Gateway returns `503 Service Unavailable`.
+### Complaint
+
+```text
+POST http://localhost:5000/complaints
+```
+
+### Survey
+
+```text
+POST http://localhost:5000/survey/1
+```
+
+The API Gateway forwards the request to the appropriate service and returns its response.
+
+---
+
+# Complete Request Flow
+
+## Citizen Registration
+
+```text
+User
+ |
+ v
+API Gateway :5000
+ |
+ v
+Citizen Service :5001
+ |
+ v
+citizen.db
+```
+
+---
+
+## Complaint Registration
+
+```text
+User
+ |
+ v
+API Gateway :5000
+ |
+ v
+Complaint Service :5002
+ |
+ | GET /citizens/<citizen_id>
+ v
+Citizen Service :5001
+ |
+ v
+citizen.db
+ |
+ | Citizen details
+ v
+Complaint Service
+ |
+ v
+complaint.db
+```
+
+---
+
+## Survey Submission
+
+```text
+User
+ |
+ v
+API Gateway :5000
+ |
+ v
+Survey Service :5003
+ |
+ | GET /complaints/<complaint_id>
+ v
+Complaint Service :5002
+ |
+ v
+complaint.db
+ |
+ | Complaint details
+ v
+Survey Service
+ |
+ v
+survey.db
+```
 
 ---
 
 # Technologies Used
 
-### Backend
+## Backend
+
 - Python
 - Flask
 - Flask-CORS
 - Requests
 
-### Database
+## Database
+
 - SQLite
 
-### Frontend
+## Frontend
+
 - HTML5
 - CSS3
 - JavaScript
 
-### Version Control
+## Version Control
+
 - Git
 - GitHub
 
@@ -414,142 +638,439 @@ The Gateway inspects the path of each request and forwards it to the correct ser
 # Installation
 
 ## Prerequisites
+
+Make sure the following are installed:
+
 - Python 3
 - Git
 - A web browser
 - Visual Studio Code (recommended)
 
+---
+
 ## Install Python Dependencies
-```
+
+Open Git CMD, Command Prompt, or PowerShell and run:
+
+```bash
 pip install flask flask-cors requests
+```
+
+Required packages:
+
+```text
+Flask
+Flask-CORS
+Requests
 ```
 
 ---
 
 # Running the Application
 
-All four components need to be running at the same time for full REST communication. Open a separate terminal for each.
+For complete REST communication, all four components should be running.
 
-## Start Citizen Service
-```
+Open a separate terminal for each service.
+
+---
+
+## 1. Start Citizen Service
+
+Open a terminal:
+
+```bash
 cd citizen-service\backend
+```
+
+Run:
+
+```bash
 python app.py
 ```
-Runs on `http://127.0.0.1:5001`
 
-## Start Complaint Service
+The service runs on:
+
+```text
+http://127.0.0.1:5001
 ```
+
+Keep this terminal running.
+
+---
+
+## 2. Start Complaint Service
+
+Open another terminal:
+
+```bash
 cd complaint-service\backend
+```
+
+Run:
+
+```bash
 python app.py
 ```
-Runs on `http://127.0.0.1:5002`
 
-## Start Scheme & Feedback Service
+The service runs on:
+
+```text
+http://127.0.0.1:5002
 ```
-cd scheme-feedback-service\backend
+
+Keep this terminal running.
+
+---
+
+## 3. Start Survey Service
+
+Open another terminal:
+
+```bash
+cd survey-service\backend
+```
+
+Run:
+
+```bash
 python app.py
 ```
-Runs on `http://127.0.0.1:5003`
-(Requires Citizen Service and Complaint Service to be running)
 
-## Start API Gateway
+The service runs on:
+
+```text
+http://127.0.0.1:5003
 ```
+
+The Survey Service requires the Complaint Service to be running when submitting a survey.
+
+Keep this terminal running.
+
+---
+
+## 4. Start API Gateway
+
+Open another terminal:
+
+```bash
 cd api-gateway
+```
+
+Run:
+
+```bash
 python app.py
 ```
-Runs on `http://127.0.0.1:5000`
-(Requires all three services above to be running)
+
+The API Gateway runs on:
+
+```text
+http://127.0.0.1:5000
+```
+
+The Gateway requires the backend services to be running for complete functionality.
 
 ---
 
 # Running the Frontend
 
 ## Citizen Frontend
-```
+
+Open:
+
+```text
 citizen-service/frontend/index.html
 ```
-Register citizens with name, ward, phone, and gender. Look up a citizen by ID.
 
-## Complaint Frontend
-```
-complaint-service/frontend/index.html
-```
-Submit a complaint using a Citizen ID, description, and location. Track an existing complaint.
+The Citizen Service frontend allows users to:
 
-## Scheme & Feedback Frontend
-```
-scheme-feedback-service/frontend/index.html
-```
-Submit feedback on a resolved complaint, and calculate a Gruha Jyothi / Gruha Lakshmi electricity bill for a citizen.
+- Register citizens
+- Enter citizen details
+- Look up citizens by ID
 
 ---
 
-# Example Workflow
+## Complaint Frontend
 
+Open:
+
+```text
+complaint-service/frontend/index.html
 ```
-1. Register a citizen (Citizen Service)
-            |
-            v
-2. Submit a complaint for that citizen (Complaint Service)
-   - Complaint Service verifies the citizen via REST call
-            |
-            v
-3. Submit feedback for that complaint (Scheme & Feedback Service)
-   - Verifies the complaint exists via REST call to Complaint Service
-   - If "not solved", flagged as priority
-            |
-            v
-4. Calculate the citizen's scheme bill (Scheme & Feedback Service)
-   - Verifies the citizen exists via REST call to Citizen Service
-   - Applies Gruha Jyothi and Gruha Lakshmi rules
+
+The Complaint Service frontend allows users to:
+
+- Enter a Citizen ID
+- Submit a civic complaint
+- Enter the issue description
+- Enter the location
+- Track an existing complaint
+- View complaint status
+
+---
+
+## Survey Frontend
+
+Open:
+
+```text
+survey-service/frontend/index.html
+```
+
+The Survey Service frontend allows users to:
+
+- Enter a Complaint ID
+- Submit survey feedback
+- Indicate whether the complaint was solved
+- Indicate awareness of the scheme
+- Give a satisfaction rating
+- Add comments
+
+---
+
+# Example Complete Workflow
+
+```text
+1. Register a citizen
+        |
+        v
+2. Citizen Service stores citizen information
+        |
+        v
+3. Submit a civic complaint
+        |
+        v
+4. Complaint Service verifies the Citizen ID
+        |
+        v
+5. Complaint is stored in complaint.db
+        |
+        v
+6. Citizen submits a survey for the complaint
+        |
+        v
+7. Survey Service verifies the Complaint ID
+        |
+        v
+8. Survey response is stored in survey.db
 ```
 
 ---
 
 # Microservices Design Principles Used
 
-## Independent Services
-```
-Citizen Service            -> 5001
-Complaint Service          -> 5002
-Scheme & Feedback Service  -> 5003
-API Gateway                -> 5000
+## 1. Independent Services
+
+```text
+Citizen Service   → 5001
+Complaint Service → 5002
+Survey Service    → 5003
+API Gateway       → 5000
 ```
 
-## Independent Databases
-```
-Citizen Service            -> citizen.db
-Complaint Service          -> complaint.db
-Scheme & Feedback Service  -> scheme_feedback.db
+Each service runs independently.
+
+---
+
+## 2. Independent Databases
+
+```text
+Citizen Service   → citizen.db
+Complaint Service → complaint.db
+Survey Service    → survey.db
 ```
 
-## REST-Based Communication
-```
-Complaint Service           -> REST -> Citizen Service
-Scheme & Feedback Service   -> REST -> Citizen Service
-Scheme & Feedback Service   -> REST -> Complaint Service
+Each service owns and manages its own database.
+
+---
+
+## 3. REST-Based Communication
+
+The services communicate through HTTP REST APIs.
+
+```text
+Complaint Service
+       |
+       | REST API
+       v
+Citizen Service
 ```
 
-## Service Isolation
-No service accesses another service's database directly. All cross-service data access happens through REST endpoints.
+and:
 
-## Single Entry Point
-The API Gateway provides one address for clients to interact with, hiding the internal port structure of the individual services.
+```text
+Survey Service
+       |
+       | REST API
+       v
+Complaint Service
+```
+
+---
+
+## 4. Service Isolation
+
+No service directly accesses another service's database.
+
+For example:
+
+```text
+Survey Service
+      X
+      |
+      X
+complaint.db
+```
+
+Instead, the Survey Service uses:
+
+```text
+GET /complaints/<complaint_id>
+```
+
+to communicate with the Complaint Service.
+
+This maintains service independence.
+
+---
+
+## 5. Single Entry Point
+
+The API Gateway provides one address for clients:
+
+```text
+http://localhost:5000
+```
+
+It hides the internal service ports from the client and forwards requests to the appropriate microservice.
+
+---
+
+# Service Dependency
+
+The services are independent, but some REST dependencies exist.
+
+```text
+Citizen Service
+       ^
+       |
+       | GET /citizens/<id>
+       |
+Complaint Service
+       ^
+       |
+       | GET /complaints/<id>
+       |
+Survey Service
+```
+
+### Important
+
+The Complaint Service depends on the Citizen Service for citizen validation.
+
+The Survey Service depends on the Complaint Service for complaint validation.
+
+However, neither service directly accesses the other's database.
+
+---
+
+# Updating Services Safely
+
+Each microservice can be developed and updated independently.
+
+For example, changes inside:
+
+```text
+complaint-service/
+```
+
+do not directly modify:
+
+```text
+survey-service/
+```
+
+or:
+
+```text
+citizen-service/
+```
+
+However, the Survey Service depends on the Complaint Service API:
+
+```text
+GET /complaints/<complaint_id>
+```
+
+Therefore, if the Complaint Service's API endpoint or response format is changed, the Survey Service may also need to be updated.
+
+Similarly, the Complaint Service depends on:
+
+```text
+GET /citizens/<citizen_id>
+```
+
+from the Citizen Service.
+
+Keeping these REST API contracts compatible allows the services to remain independently maintainable.
+
+---
+
+# Git and GitHub
+
+The project is maintained using Git and GitHub.
+
+The repository uses separate branches for development work.
+
+The current development branch contains:
+
+```text
+citizen-service
+complaint-service
+survey-service
+api-gateway
+```
+
+The development work can be performed on separate branches and merged into the main branch after testing.
 
 ---
 
 # Future Scope
 
+The following features can be added in future development:
+
 - Authentication and authorization
-- Wiring the frontends to call the API Gateway instead of individual service ports
-- Complaint status updates (marking complaints as RESOLVED)
-- Admin dashboard to view all citizens/complaints
-- Logging and monitoring
+- Improved user interface
+- Complaint status updates
+- Admin dashboard
+- Ward-based complaint management
+- Centralized logging
+- Monitoring
 - Docker containerization
 - Automated testing
+- Improved error handling
+- API documentation
+- Deployment to cloud platforms
 
 ---
 
 # Conclusion
 
-The Community Civic Microservices project demonstrates how a civic application can be divided into independent microservices. The system now includes a Citizen Service, Complaint Service, Scheme & Feedback Service, and a centralized API Gateway, each with clearly separated responsibilities and REST-based communication between services.
+The Community Civic Microservices project demonstrates how a civic application can be divided into independent microservices.
+
+The current implementation includes:
+
+- Citizen Service
+- Complaint Service
+- Survey Service
+- API Gateway
+
+Each service has a clearly separated responsibility and maintains its own database.
+
+The Complaint Service communicates with the Citizen Service through REST APIs to validate citizens.
+
+The Survey Service communicates with the Complaint Service through REST APIs to validate complaints before storing survey responses.
+
+The API Gateway provides a centralized entry point and routes requests to the appropriate microservice.
+
+This architecture follows important microservices principles such as service independence, database isolation, REST-based communication, and a single API entry point.
