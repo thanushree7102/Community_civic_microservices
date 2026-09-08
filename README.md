@@ -1,38 +1,45 @@
-# Community Civic Microservices
+Community Civic Microservices
 
-A microservices-based Community Civic Portal designed to manage citizens, civic complaints, and complaint surveys through independent services communicating using REST APIs.
+A microservices-based Community Civic Portal designed to manage citizen information, civic complaints, and emergency reports through independent services communicating using REST APIs.
 
 This project is developed as a group project. Each microservice has its own backend, frontend, and database where required.
 
----
+Project Overview
 
-## Project Overview
+The Community Civic Portal provides a platform for:
 
-The Community Civic Portal provides a simple platform for:
+Managing citizen information
 
-- Managing citizen information
-- Registering and tracking civic complaints
-- Collecting survey feedback about complaints
-- Providing a centralized API Gateway for accessing all services
+Registering and tracking civic complaints
 
-The system currently consists of:
+Reporting and managing emergencies
 
-1. **Citizen Service**
-2. **Complaint Service**
-3. **Survey Service**
-4. **API Gateway**
+Providing a centralized API Gateway
 
-The Citizen Service and Complaint Service are implemented as independent microservices. The Complaint Service communicates with the Citizen Service through a REST API to verify whether a citizen exists before registering a complaint.
+Load balancing multiple Complaint Service instances
 
-The Survey Service communicates with the Complaint Service through a REST API to verify whether a complaint exists before submitting a survey.
+Applying API rate limiting and basic security headers at the Gateway
 
-The API Gateway acts as a single entry point that routes requests to the correct service.
+The current emergency-service branch contains:
 
----
+Citizen Service
 
-# System Architecture
+Complaint Service
 
-```text
+Emergency Service
+
+API Gateway
+
+The Citizen Service stores citizen information.
+
+The Complaint Service verifies citizens through the Citizen Service before registering a complaint.
+
+The Emergency Service verifies citizens through the Citizen Service before registering an emergency.
+
+The API Gateway provides a single entry point and routes requests to the correct service. It also load-balances Complaint Service requests between ports 5002 and 5004.
+
+System Architecture
+
                          Community Civic Portal
                                   |
                                   v
@@ -41,54 +48,38 @@ The API Gateway acts as a single entry point that routes requests to the correct
               +-------------------+-------------------+
               |                   |                   |
               v                   v                   v
-       Citizen Service     Complaint Service     Survey Service
-          :5001                :5002                :5003
+       Citizen Service     Complaint Service     Emergency Service
+           :5001            :5002 / :5004            :5003
               |                   |                   |
               v                   v                   v
-         citizen.db         complaint.db          survey.db
-                                  ^
-                                  |
-                                  |
-                         REST API Communication
-                         GET /complaints/<id>
-                                  |
-                                  |
-                           Survey Service
-```
+         citizen.db         complaint.db          emergency.db
 
-### Service Communication
+Service Communication
 
-```text
 Complaint Service
        |
        | GET /citizens/<citizen_id>
        v
-Citizen Service
+Citizen Service :5001
        |
        v
 citizen.db
-```
 
-```text
-Survey Service
+Emergency Service
        |
-       | GET /complaints/<complaint_id>
+       | GET /citizens/<citizen_id>
        v
-Complaint Service
+Citizen Service :5001
        |
        v
-complaint.db
-```
+citizen.db
 
 No service directly accesses another service's database.
 
 All cross-service communication happens through REST APIs.
 
----
+Project Structure
 
-# Project Structure
-
-```text
 Community_civic_microservices/
 │
 ├── citizen-service/
@@ -111,11 +102,11 @@ Community_civic_microservices/
 │       ├── style.css
 │       └── script.js
 │
-├── survey-service/
+├── emergency-service/
 │   ├── backend/
 │   │   └── app.py
 │   ├── database/
-│   │   └── survey.db
+│   │   └── emergency.db
 │   └── frontend/
 │       ├── index.html
 │       ├── style.css
@@ -125,952 +116,763 @@ Community_civic_microservices/
 │   └── app.py
 │
 └── README.md
-```
 
----
+1. Citizen Service
 
-# 1. Citizen Service
-
-## Description
+Description
 
 The Citizen Service is responsible for storing and retrieving citizen information.
 
-It is an independent Flask microservice and maintains its own SQLite database.
+It is an independent Flask microservice with its own SQLite database.
 
-### Port
+Port
 
-```text
 5001
-```
 
-### Base URL
+Base URL
 
-```text
 http://127.0.0.1:5001
-```
 
-### Database
+Database
 
-```text
 citizen-service/database/citizen.db
-```
 
----
+Citizen API Endpoints
 
-## Citizen API Endpoints
+Create Citizen
 
-### Create Citizen
-
-```text
 POST /citizens
-```
 
 Creates a new citizen.
 
 Example request:
 
-```json
 {
     "name": "Ravi",
+    "ward": "12",
     "phone": "9998887770",
-    "ward": "12"
+    "gender": "male"
 }
-```
 
-### Get Citizen
+Get Citizen
 
-```text
 GET /citizens/<citizen_id>
-```
 
 Retrieves the details of a citizen using the citizen ID.
 
 Example:
 
-```text
 GET /citizens/1
-```
 
 If the citizen does not exist:
 
-```text
 404 Not Found
-```
 
----
+2. Complaint Service
 
-# 2. Complaint Service
-
-## Description
+Description
 
 The Complaint Service is responsible for registering and tracking civic complaints.
 
-It is implemented as an independent Flask microservice and maintains its own SQLite database.
+It verifies the citizen through the Citizen Service before creating a complaint.
 
-Before creating a complaint, it verifies the citizen through the Citizen Service REST API.
+Primary Port
 
-### Port
-
-```text
 5002
-```
 
-### Base URL
+Second Instance
 
-```text
+5004
+
+The API Gateway uses ports 5002 and 5004 as two Complaint Service instances for round-robin load balancing.
+
+Base URL
+
 http://127.0.0.1:5002
-```
 
-### Database
+Database
 
-```text
 complaint-service/database/complaint.db
-```
 
----
+Complaint API Endpoints
 
-## Complaint API Endpoints
+Create Complaint
 
-### Create Complaint
-
-```text
 POST /complaints
-```
-
-Creates a new civic complaint after verifying the citizen through the Citizen Service.
 
 Example request:
 
-```json
 {
     "citizen_id": 1,
     "description": "Large pothole near college gate",
     "location": "Ward 12"
 }
-```
 
-Example successful response:
+Get Complaint
 
-```json
-{
-    "complaint_id": 1,
-    "citizen_id": 1,
-    "citizen_name": "Shikha",
-    "description": "Large pothole near college gate",
-    "location": "Ward 12",
-    "status": "OPEN"
-}
-```
-
-### Get Complaint
-
-```text
 GET /complaints/<complaint_id>
-```
-
-Retrieves the details of an existing complaint.
 
 Example:
 
-```text
 GET /complaints/1
-```
 
 If the complaint does not exist:
 
-```text
 404 Not Found
-```
 
----
+Citizen Validation
 
-## Citizen Validation
+Before creating a complaint, the Complaint Service calls:
 
-Before a complaint is created, the Complaint Service sends:
+GET http://localhost:5001/citizens/<citizen_id>
 
-```text
-GET /citizens/<citizen_id>
-```
+Possible Results
 
-to the Citizen Service:
+200 OK → citizen exists and complaint is created
 
-```text
-http://localhost:5001
-```
+404 Not Found → citizen does not exist and complaint is rejected
 
-### Possible Results
+503 Service Unavailable → Citizen Service is unavailable
 
-```text
-200 OK
-```
+3. Emergency Service
 
-The citizen is valid and the complaint is created.
+Description
 
-```text
-404 Not Found
-```
+The Emergency Service is responsible for reporting, retrieving, and updating emergency incidents.
 
-The citizen does not exist and the complaint is rejected.
+It is an independent Flask microservice with its own SQLite database.
 
-```text
-503 Service Unavailable
-```
+Before creating an emergency, it verifies that the supplied citizen ID exists by communicating with the Citizen Service.
 
-The Citizen Service is unavailable.
+Port
 
----
-
-# 3. Survey Service
-
-## Description
-
-The Survey Service collects feedback from citizens about their complaints.
-
-Before accepting a survey, it verifies that the complaint exists by communicating with the Complaint Service through a REST API.
-
-The Survey Service is an independent Flask microservice with its own SQLite database.
-
-### Port
-
-```text
 5003
-```
 
-### Base URL
+Base URL
 
-```text
 http://127.0.0.1:5003
-```
 
-### Database
+Database
 
-```text
-survey-service/database/survey.db
-```
+emergency-service/database/emergency.db
 
----
+Emergency API Endpoints
 
-## Survey API Endpoints
+Report Emergency
 
-### Submit Survey
+POST /emergencies
 
-```text
-POST /survey/<complaint_id>
-```
+Required information includes:
 
-Submits survey feedback for a particular complaint.
+Citizen ID
 
-Before storing the survey, the Survey Service calls:
+Emergency type
 
-```text
-GET /complaints/<complaint_id>
-```
+Description
 
-on the Complaint Service.
+Location
+
+Severity
+
+Example request:
+
+{
+    "citizen_id": 1,
+    "type": "Medical",
+    "description": "Medical emergency reported",
+    "location": "Ward 12",
+    "severity": "HIGH"
+}
+
+A newly reported emergency starts with:
+
+REPORTED
+
+Get All Emergencies
+
+GET /emergencies
+
+Returns all emergency records.
+
+Get Emergency by ID
+
+GET /emergencies/<emergency_id>
 
 Example:
 
-```text
-GET http://localhost:5002/complaints/1
-```
+GET /emergencies/1
 
-### Example Request
+If the emergency does not exist:
 
-```json
-{
-    "actually_solved": "Yes",
-    "aware_of_scheme": "Yes",
-    "satisfaction_rating": 4,
-    "comments": "The complaint was resolved successfully."
-}
-```
-
-### Example Response
-
-```json
-{
-    "survey_id": 1,
-    "complaint_id": 1,
-    "complaint_status": "OPEN",
-    "actually_solved": "Yes",
-    "aware_of_scheme": "Yes",
-    "satisfaction_rating": 4,
-    "comments": "The complaint was resolved successfully."
-}
-```
-
-### Get Survey
-
-```text
-GET /survey/<complaint_id>
-```
-
-Retrieves the latest survey submitted for a complaint.
-
-Example:
-
-```text
-GET /survey/1
-```
-
-If no survey exists:
-
-```text
 404 Not Found
-```
 
----
+Update Emergency Status
 
-## Survey and Complaint Service Communication
+PUT /emergencies/<emergency_id>/status
 
-The Survey Service does not directly access `complaint.db`.
+Example request:
 
-Instead, it communicates with the Complaint Service through:
+{
+    "status": "IN_PROGRESS"
+}
 
-```text
-Survey Service
-     |
-     | GET /complaints/<complaint_id>
-     v
-Complaint Service
-     |
-     v
-complaint.db
-```
+Supported statuses:
 
-### Possible Results
+REPORTED
+IN_PROGRESS
+RESOLVED
+CANCELLED
 
-If the Complaint Service returns:
+Emergency Service and Citizen Service Communication
 
-```text
-200 OK
-```
+The Emergency Service does not directly access citizen.db.
 
-the complaint exists and the survey can be stored.
+Instead, it sends:
 
-If the Complaint Service returns:
+GET /citizens/<citizen_id>
 
-```text
-404 Not Found
-```
+to the Citizen Service.
 
-the survey is rejected because the complaint does not exist.
+The communication flow is:
 
-If the Complaint Service is unavailable:
+Emergency Service :5003
+          |
+          | REST API
+          v
+Citizen Service :5001
+          |
+          v
+     citizen.db
 
-```text
-503 Service Unavailable
-```
+If the citizen does not exist, the emergency is not created.
 
-the survey cannot be submitted.
+4. API Gateway
 
----
+Description
 
-# 4. API Gateway
+The API Gateway acts as the single entry point for client requests.
 
-## Description
+It forwards requests to the appropriate microservice and hides the internal service ports from clients.
 
-The API Gateway acts as the single entry point for all client requests.
+The Gateway also provides:
 
-It does not contain business logic.
+API versioning
 
-Instead, it forwards each incoming request to the appropriate backend microservice.
+Complaint Service load balancing
 
-### Port
+Round-robin request distribution
 
-```text
+Rate limiting
+
+Request logging
+
+Basic security headers
+
+Service-unavailable handling
+
+Port
+
 5000
-```
 
-### Base URL
+Base URL
 
-```text
 http://127.0.0.1:5000
-```
 
----
+API Gateway Routing
 
-## Gateway Routing Rules
+Gateway Route
 
-| Client Path | Forwarded To |
-|---|---|
-| `/citizens/*` | Citizen Service (`5001`) |
-| `/complaints/*` | Complaint Service (`5002`) |
-| `/survey/*` | Survey Service (`5003`) |
+Target Service
 
----
+/api/v1/citizens/*
 
-## Example Gateway Requests
+Citizen Service :5001
 
-Instead of directly calling each service:
+/api/v1/complaints/*
 
-```text
+Complaint Service :5002 / :5004
+
+/api/v1/emergencies/*
+
+Emergency Service :5003
+
+Citizen Route
+
+/api/v1/citizens/*
+
+Forwarded to:
+
 http://localhost:5001
+
+Example:
+
+POST http://localhost:5000/api/v1/citizens
+
+Complaint Route
+
+/api/v1/complaints/*
+
+Requests are distributed between:
+
 http://localhost:5002
+http://localhost:5004
+
+The Gateway uses Round Robin load balancing.
+
+Example:
+
+Request 1 → Complaint Service :5002
+Request 2 → Complaint Service :5004
+Request 3 → Complaint Service :5002
+Request 4 → Complaint Service :5004
+
+Emergency Route
+
+/api/v1/emergencies/*
+
+Forwarded to:
+
 http://localhost:5003
-```
 
-the client can use the API Gateway:
+Example:
 
-### Citizen
+POST http://localhost:5000/api/v1/emergencies
 
-```text
-POST http://localhost:5000/citizens
-```
+The Gateway forwards the request to:
 
-### Complaint
+POST http://localhost:5003/emergencies
 
-```text
-POST http://localhost:5000/complaints
-```
+API Gateway Rate Limiting
 
-### Survey
+The Gateway applies a rate limit of:
 
-```text
-POST http://localhost:5000/survey/1
-```
+100 requests per minute per client
 
-The API Gateway forwards the request to the appropriate service and returns its response.
+If the client exceeds the limit:
 
----
+429 Too Many Requests
 
-# Complete Request Flow
+API Gateway Security Headers
 
-## Citizen Registration
+The Gateway adds security headers such as:
 
-```text
-User
- |
- v
+X-Content-Type-Options: nosniff
+X-Frame-Options: DENY
+X-XSS-Protection: 1; mode=block
+
+API Gateway Request Logging
+
+The Gateway logs incoming requests including:
+
+HTTP method
+
+Request path
+
+Client IP address
+
+This helps with monitoring and debugging.
+
+Service Unavailability Handling
+
+If a backend service cannot be reached, the Gateway returns:
+
+503 Service Unavailable
+
+Complete Request Flow
+
+Citizen Registration
+
+Client
+  |
+  v
 API Gateway :5000
- |
- v
+  |
+  v
 Citizen Service :5001
- |
- v
+  |
+  v
 citizen.db
-```
 
----
+Complaint Registration
 
-## Complaint Registration
-
-```text
-User
- |
- v
+Client
+  |
+  v
 API Gateway :5000
- |
- v
-Complaint Service :5002
- |
- | GET /citizens/<citizen_id>
- v
-Citizen Service :5001
- |
- v
-citizen.db
- |
- | Citizen details
- v
+  |
+  v
 Complaint Service
- |
- v
+ :5002 or :5004
+  |
+  | GET /citizens/<citizen_id>
+  v
+Citizen Service :5001
+  |
+  v
+citizen.db
+
+The Complaint Service then stores the complaint in:
+
 complaint.db
-```
 
----
+Emergency Reporting
 
-## Survey Submission
-
-```text
-User
- |
- v
+Client
+  |
+  v
 API Gateway :5000
- |
- v
-Survey Service :5003
- |
- | GET /complaints/<complaint_id>
- v
-Complaint Service :5002
- |
- v
-complaint.db
- |
- | Complaint details
- v
-Survey Service
- |
- v
-survey.db
-```
+  |
+  v
+Emergency Service :5003
+  |
+  | GET /citizens/<citizen_id>
+  v
+Citizen Service :5001
+  |
+  v
+citizen.db
 
----
+After successful citizen verification:
 
-# Technologies Used
+Emergency Service
+       |
+       v
+emergency.db
 
-## Backend
+Running the Application
 
-- Python
-- Flask
-- Flask-CORS
-- Requests
+For complete functionality, run the required services in separate terminals.
 
-## Database
+1. Start Citizen Service
 
-- SQLite
-
-## Frontend
-
-- HTML5
-- CSS3
-- JavaScript
-
-## Version Control
-
-- Git
-- GitHub
-
----
-
-# Installation
-
-## Prerequisites
-
-Make sure the following are installed:
-
-- Python 3
-- Git
-- A web browser
-- Visual Studio Code (recommended)
-
----
-
-## Install Python Dependencies
-
-Open Git CMD, Command Prompt, or PowerShell and run:
-
-```bash
-pip install flask flask-cors requests
-```
-
-Required packages:
-
-```text
-Flask
-Flask-CORS
-Requests
-```
-
----
-
-# Running the Application
-
-For complete REST communication, all four components should be running.
-
-Open a separate terminal for each service.
-
----
-
-## 1. Start Citizen Service
-
-Open a terminal:
-
-```bash
 cd citizen-service\backend
-```
-
-Run:
-
-```bash
 python app.py
-```
 
-The service runs on:
+Runs on:
 
-```text
 http://127.0.0.1:5001
-```
 
-Keep this terminal running.
+2. Start Complaint Service Instance 1
 
----
-
-## 2. Start Complaint Service
-
-Open another terminal:
-
-```bash
 cd complaint-service\backend
-```
-
-Run:
-
-```bash
 python app.py
-```
 
-The service runs on:
+Runs on:
 
-```text
 http://127.0.0.1:5002
-```
 
-Keep this terminal running.
+3. Start Complaint Service Instance 2
 
----
+The API Gateway is configured for a second Complaint Service instance on:
 
-## 3. Start Survey Service
+http://127.0.0.1:5004
 
-Open another terminal:
+Run the Complaint Service using the appropriate port configuration for the second instance.
 
-```bash
-cd survey-service\backend
-```
+4. Start Emergency Service
 
-Run:
-
-```bash
+cd emergency-service\backend
 python app.py
-```
 
-The service runs on:
+Runs on:
 
-```text
 http://127.0.0.1:5003
-```
 
-The Survey Service requires the Complaint Service to be running when submitting a survey.
+5. Start API Gateway
 
-Keep this terminal running.
-
----
-
-## 4. Start API Gateway
-
-Open another terminal:
-
-```bash
 cd api-gateway
-```
-
-Run:
-
-```bash
 python app.py
-```
 
-The API Gateway runs on:
+Runs on:
 
-```text
 http://127.0.0.1:5000
-```
 
-The Gateway requires the backend services to be running for complete functionality.
+Running the Frontend
 
----
+Citizen Frontend
 
-# Running the Frontend
-
-## Citizen Frontend
-
-Open:
-
-```text
 citizen-service/frontend/index.html
-```
 
-The Citizen Service frontend allows users to:
+Used to:
 
-- Register citizens
-- Enter citizen details
-- Look up citizens by ID
+Register citizens
 
----
+Enter citizen details
 
-## Complaint Frontend
+Retrieve citizens using their ID
 
-Open:
+Complaint Frontend
 
-```text
 complaint-service/frontend/index.html
-```
 
-The Complaint Service frontend allows users to:
+Used to:
 
-- Enter a Citizen ID
-- Submit a civic complaint
-- Enter the issue description
-- Enter the location
-- Track an existing complaint
-- View complaint status
+Enter a Citizen ID
 
----
+Submit a civic complaint
 
-## Survey Frontend
+Enter complaint description
 
-Open:
+Enter location
 
-```text
-survey-service/frontend/index.html
-```
+Track a complaint
 
-The Survey Service frontend allows users to:
+Emergency Frontend
 
-- Enter a Complaint ID
-- Submit survey feedback
-- Indicate whether the complaint was solved
-- Indicate awareness of the scheme
-- Give a satisfaction rating
-- Add comments
+emergency-service/frontend/index.html
 
----
+Used to:
 
-# Example Complete Workflow
+Report an emergency
 
-```text
-1. Register a citizen
-        |
-        v
-2. Citizen Service stores citizen information
-        |
-        v
-3. Submit a civic complaint
-        |
-        v
-4. Complaint Service verifies the Citizen ID
-        |
-        v
-5. Complaint is stored in complaint.db
-        |
-        v
-6. Citizen submits a survey for the complaint
-        |
-        v
-7. Survey Service verifies the Complaint ID
-        |
-        v
-8. Survey response is stored in survey.db
-```
+Enter Citizen ID
 
----
+Select emergency type
 
-# Microservices Design Principles Used
+Enter description
 
-## 1. Independent Services
+Enter location
 
-```text
-Citizen Service   → 5001
-Complaint Service → 5002
-Survey Service    → 5003
-API Gateway       → 5000
-```
+Specify severity
 
-Each service runs independently.
+View emergency information
 
----
+Update emergency status
 
-## 2. Independent Databases
+Installation
 
-```text
-Citizen Service   → citizen.db
-Complaint Service → complaint.db
-Survey Service    → survey.db
-```
+Prerequisites
 
-Each service owns and manages its own database.
+Install:
 
----
+Python 3
 
-## 3. REST-Based Communication
+Git
 
-The services communicate through HTTP REST APIs.
+A web browser
 
-```text
+Visual Studio Code (recommended)
+
+Install Python Dependencies
+
+pip install flask flask-cors requests
+
+Technologies Used
+
+Backend
+
+Python
+
+Flask
+
+Flask-CORS
+
+Requests
+
+Database
+
+SQLite
+
+Frontend
+
+HTML5
+
+CSS3
+
+JavaScript
+
+Architecture
+
+Microservices
+
+REST APIs
+
+API Gateway
+
+Load Balancing
+
+Rate Limiting
+
+Version Control
+
+Git
+
+GitHub
+
+Microservices Design Principles
+
+Independent Services
+
+Citizen Service    → 5001
+Complaint Service  → 5002 / 5004
+Emergency Service  → 5003
+API Gateway        → 5000
+
+Each service has a separate responsibility.
+
+Independent Databases
+
+Citizen Service    → citizen.db
+Complaint Service  → complaint.db
+Emergency Service  → emergency.db
+
+Each service owns its own database.
+
+REST-Based Communication
+
 Complaint Service
        |
        | REST API
        v
 Citizen Service
-```
 
-and:
-
-```text
-Survey Service
+Emergency Service
        |
        | REST API
        v
-Complaint Service
-```
+Citizen Service
 
----
-
-## 4. Service Isolation
+Service Isolation
 
 No service directly accesses another service's database.
 
 For example:
 
-```text
-Survey Service
-      X
-      |
-      X
-complaint.db
-```
+Emergency Service
+       X
+       |
+       X
+citizen.db
 
-Instead, the Survey Service uses:
+Instead, the Emergency Service requests citizen information through:
 
-```text
-GET /complaints/<complaint_id>
-```
+GET /citizens/<citizen_id>
 
-to communicate with the Complaint Service.
+Single Entry Point
 
-This maintains service independence.
+The API Gateway provides one central endpoint:
 
----
-
-## 5. Single Entry Point
-
-The API Gateway provides one address for clients:
-
-```text
 http://localhost:5000
-```
 
-It hides the internal service ports from the client and forwards requests to the appropriate microservice.
+It routes requests to the appropriate microservice.
 
----
+Load Balancing
 
-# Service Dependency
+The Complaint Service has two instances:
 
-The services are independent, but some REST dependencies exist.
+Complaint Service :5002
+Complaint Service :5004
 
-```text
-Citizen Service
-       ^
-       |
-       | GET /citizens/<id>
-       |
+The API Gateway distributes requests using:
+
+Round Robin
+
+Rate Limiting
+
+The Gateway limits clients to:
+
+100 requests per minute
+
+This helps prevent excessive requests from a single client.
+
+Service Dependency
+
+The current service dependencies are:
+
 Complaint Service
-       ^
-       |
-       | GET /complaints/<id>
-       |
-Survey Service
-```
+        |
+        | REST
+        v
+Citizen Service
 
-### Important
+Emergency Service
+        |
+        | REST
+        v
+Citizen Service
 
-The Complaint Service depends on the Citizen Service for citizen validation.
+The API Gateway connects clients to all services:
 
-The Survey Service depends on the Complaint Service for complaint validation.
+                  API Gateway
+                      |
+        +-------------+-------------+
+        |             |             |
+        v             v             v
+    Citizen       Complaint      Emergency
+    Service        Service        Service
 
-However, neither service directly accesses the other's database.
-
----
-
-# Updating Services Safely
+Updating Services Safely
 
 Each microservice can be developed and updated independently.
 
 For example, changes inside:
 
-```text
-complaint-service/
-```
+emergency-service/
 
 do not directly modify:
 
-```text
-survey-service/
-```
+complaint-service/
 
 or:
 
-```text
 citizen-service/
-```
 
-However, the Survey Service depends on the Complaint Service API:
+However, the Emergency Service depends on the Citizen Service API:
 
-```text
-GET /complaints/<complaint_id>
-```
-
-Therefore, if the Complaint Service's API endpoint or response format is changed, the Survey Service may also need to be updated.
-
-Similarly, the Complaint Service depends on:
-
-```text
 GET /citizens/<citizen_id>
-```
 
-from the Citizen Service.
+Therefore, if the Citizen Service API endpoint or response format is changed, the Emergency Service may also need to be updated.
 
-Keeping these REST API contracts compatible allows the services to remain independently maintainable.
+Similarly, the Complaint Service depends on the Citizen Service API.
 
----
+As long as the REST API contracts remain compatible, each service can be maintained independently.
 
-# Git and GitHub
+Future Scope
 
-The project is maintained using Git and GitHub.
+Authentication and authorization
 
-The repository uses separate branches for development work.
+Improved frontend design
 
-The current development branch contains:
+Emergency notifications
 
-```text
-citizen-service
-complaint-service
-survey-service
-api-gateway
-```
+Real-time emergency updates
 
-The development work can be performed on separate branches and merged into the main branch after testing.
+Admin dashboard
 
----
+Advanced emergency prioritization
 
-# Future Scope
+Centralized logging and monitoring
 
-The following features can be added in future development:
+Docker containerization
 
-- Authentication and authorization
-- Improved user interface
-- Complaint status updates
-- Admin dashboard
-- Ward-based complaint management
-- Centralized logging
-- Monitoring
-- Docker containerization
-- Automated testing
-- Improved error handling
-- API documentation
-- Deployment to cloud platforms
+Automated testing
 
----
+API documentation
 
-# Conclusion
+Cloud deployment
+
+More sophisticated load balancing
+
+Service health checks and automatic failover
+
+Conclusion
 
 The Community Civic Microservices project demonstrates how a civic application can be divided into independent microservices.
 
-The current implementation includes:
+The current emergency-service branch contains:
 
-- Citizen Service
-- Complaint Service
-- Survey Service
-- API Gateway
+Citizen Service
 
-Each service has a clearly separated responsibility and maintains its own database.
+Complaint Service
 
-The Complaint Service communicates with the Citizen Service through REST APIs to validate citizens.
+Emergency Service
 
-The Survey Service communicates with the Complaint Service through REST APIs to validate complaints before storing survey responses.
+API Gateway
 
-The API Gateway provides a centralized entry point and routes requests to the appropriate microservice.
+Each service has a clearly separated responsibility and its own database.
 
-This architecture follows important microservices principles such as service independence, database isolation, REST-based communication, and a single API entry point.
+The Complaint Service and Emergency Service communicate with the Citizen Service through REST APIs for citizen validation.
+
+The API Gateway provides a centralized entry point, routes requests using versioned API paths, load-balances Complaint Service instances, applies rate limiting, logs requests, and adds basic security headers. 
+
+This architecture demonstrates important microservices principles including service independence, database isolation, REST-based communication, API Gateway routing, load balancing, and controlled request han
